@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Muse 邀请码互助</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1a1a1a; --muted:#6b7280; --brand:#0a7aff; --brand-d:#0063d1; --line:#e5e7eb; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif; background:var(--bg); color:var(--ink); line-height:1.6; }
+  .wrap { max-width:640px; margin:0 auto; padding:20px 16px 60px; }
+  header.top { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:20px; margin-bottom:16px; }
+  header.top h1 { font-size:22px; margin-bottom:10px; }
+  header.top ol { margin-left:20px; color:#374151; font-size:14px; }
+  header.top ol li { margin:4px 0; }
+  .demo-banner { display:none; background:#fff7e6; border:1px solid #f5c542; color:#8a5a00; border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:16px; }
+  .card h2 { font-size:16px; margin-bottom:12px; }
+  .row { display:flex; gap:10px; }
+  input[type=text] { flex:1; padding:12px; font-size:16px; border:1px solid var(--line); border-radius:10px; outline:none; text-transform:uppercase; }
+  input[type=text]:focus { border-color:var(--brand); }
+  button { cursor:pointer; border:none; border-radius:10px; font-size:15px; font-weight:600; }
+  .btn-primary { background:var(--brand); color:#fff; padding:12px 20px; }
+  .btn-primary:hover { background:var(--brand-d); }
+  .btn-primary:disabled { background:#9cc3ff; cursor:default; }
+  .btn-big { width:100%; padding:14px; font-size:16px; }
+  .btn-copy { background:#eef4ff; color:var(--brand); padding:10px 0; width:100%; margin-top:10px; }
+  .btn-copy:hover { background:#dce9ff; }
+  .code-item { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px; }
+  .code-value { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:24px; font-weight:700; letter-spacing:2px; text-align:center; padding:6px 0; }
+  .code-meta { text-align:center; color:var(--muted); font-size:13px; margin-top:2px; }
+  .empty { text-align:center; color:var(--muted); padding:30px 0; font-size:14px; }
+  .list-head { display:flex; justify-content:space-between; align-items:center; margin:18px 2px 12px; }
+  .list-head h2 { font-size:16px; }
+  .list-head span { font-size:13px; color:var(--muted); }
+  #randomResult { display:none; margin-top:14px; border:2px dashed var(--brand); border-radius:12px; padding:16px; text-align:center; }
+  #randomResult .code-value { font-size:30px; }
+  #toast { position:fixed; left:50%; bottom:30px; transform:translateX(-50%) translateY(20px); background:#1a1a1a; color:#fff; padding:12px 20px; border-radius:10px; font-size:14px; opacity:0; transition:all .25s; pointer-events:none; max-width:90%; text-align:center; z-index:99; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+  .loading { text-align:center; color:var(--muted); padding:20px; font-size:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <h1>🎁 Muse 邀请码互助</h1>
+    <ol>
+      <li>任何人都可以把自己的邀请码提交到下面分享，也可以复制别人分享的邀请码使用。</li>
+      <li>列表默认按提交时间排序，先提交的排在前面。</li>
+      <li><b>公平规则：</b>每个邀请码被复制一次后，会自动排到最后面；被复制 <b>30 次</b>后自动下架删除，让更多人的邀请码有机会被看到。</li>
+      <li>懒得挑？点「随机获取邀请码」，随机抽一个给你，复制后同样会计数并沉底。</li>
+    </ol>
+  </header>
+
+  <div class="demo-banner" id="demoBanner">当前为单机演示模式：数据只保存在你自己的浏览器中。接入共享后端后，所有访问者将看到同一份列表。</div>
+
+  <div class="card">
+    <h2>🎲 随机获取邀请码</h2>
+    <button class="btn-primary btn-big" id="randomBtn" onclick="drawRandom()">随机抽一个</button>
+    <div id="randomResult">
+      <div class="code-value" id="randomCode"></div>
+      <div class="code-meta" id="randomMeta"></div>
+      <button class="btn-copy" id="randomCopyBtn">复制这个邀请码</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>📮 分享我的邀请码</h2>
+    <div class="row">
+      <input type="text" id="codeInput" placeholder="输入邀请码，如 374F1N" maxlength="16" autocomplete="off">
+      <button class="btn-primary" id="submitBtn" onclick="submitCode()">提交</button>
+    </div>
+  </div>
+
+  <div class="list-head">
+    <h2>📋 邀请码列表</h2>
+    <span id="statLine"></span>
+  </div>
+  <div id="list"><div class="loading">加载中…</div></div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+/* ================= 配置区 =================
+   填入 Supabase 项目的 URL 和 anon key 后，本页面即进入
+   全网共享模式：所有访问者看到同一份列表、同一个计数。
+   为空则为单机演示模式（数据只存在本浏览器 localStorage）。 */
+const CONFIG = {
+  SUPABASE_URL: "https://qprqrtgxaoyrykisalks.supabase.co",
+  SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwcnFydGd4YW95cnlraXNhbGtzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA1MzM4MjksImV4cCI6MjEwNjEwOTgyOX0.CNKiUrQTzxmjoiHINaMZL_ySG9J9If4K_R-aLjnu8Rs"
+};
+const MAX_COPIES = 30;          // 被复制多少次后删除
+const REFRESH_MS = 20000;       // 列表自动刷新间隔
+/* =========================================== */
+
+const SHARED = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
+if (!SHARED) document.getElementById('demoBanner').style.display = 'block';
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 9);
+}
+
+/* ---------- 存储层：Supabase / localStorage 双适配 ---------- */
+const store = {
+  async list() {
+    if (SHARED) {
+      const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/codes?select=*&order=updated_at.asc`, {
+        headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` }
+      });
+      if (!r.ok) throw new Error('读取失败');
+      return r.json();
+    }
+    try { return JSON.parse(localStorage.getItem('muse_invite_codes_v1') || '[]'); }
+    catch { return []; }
+  },
+  async add(item) {
+    if (SHARED) {
+      const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/codes`, {
+        method: 'POST',
+        headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+                   'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify({ code: item.code, copies: 0 })
+      });
+      if (!r.ok) throw new Error('提交失败');
+      return (await r.json())[0];
+    }
+    const arr = await this.list();
+    arr.push(item);
+    localStorage.setItem('muse_invite_codes_v1', JSON.stringify(arr));
+    return item;
+  },
+  async update(id, patch) {
+    if (SHARED) {
+      const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/codes?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}`,
+                   'Content-Type': 'application/json' },
+        body: JSON.stringify(patch)
+      });
+      if (!r.ok) throw new Error('更新失败');
+      return;
+    }
+    const arr = await this.list();
+    const it = arr.find(x => x.id === id);
+    if (it) Object.assign(it, patch);
+    localStorage.setItem('muse_invite_codes_v1', JSON.stringify(arr));
+  },
+  async remove(id) {
+    if (SHARED) {
+      await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/codes?id=eq.${id}`, {
+        method: 'DELETE',
+        headers: { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` }
+      });
+      return;
+    }
+    const arr = (await this.list()).filter(x => x.id !== id);
+    localStorage.setItem('muse_invite_codes_v1', JSON.stringify(arr));
+  }
+};
+
+/* ---------- 业务逻辑 ---------- */
+let codes = [];
+
+function sortCodes(arr) {
+  return arr.slice().sort((a, b) => new Date(a.updated_at || a.updatedAt) - new Date(b.updated_at || b.updatedAt));
+}
+
+async function refreshList(silent) {
+  try {
+    codes = sortCodes(await store.list());
+    renderList();
+  } catch (e) {
+    if (!silent) toast('列表加载失败，请稍后重试');
+  }
+}
+
+function renderList() {
+  const box = document.getElementById('list');
+  document.getElementById('statLine').textContent = `共 ${codes.length} 个 · 每${REFRESH_MS/1000}秒自动刷新`;
+  if (!codes.length) {
+    box.innerHTML = '<div class="empty">还没有人分享邀请码，来做第一个吧 👆</div>';
+    return;
+  }
+  box.innerHTML = '';
+  codes.forEach(c => {
+    const id = c.id, code = c.code, copies = c.copies || 0;
+    const div = document.createElement('div');
+    div.className = 'code-item';
+    div.innerHTML = `<div class="code-value">${escapeHtml(code)}</div>
+      <div class="code-meta">已被复制 ${copies} 次 · 再被复制 ${MAX_COPIES - copies} 次后下架</div>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn-copy';
+    btn.textContent = '复制邀请码';
+    btn.onclick = () => copyCode(id, btn);
+    div.appendChild(btn);
+    box.appendChild(div);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+async function doCopy(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch {}
+    document.body.removeChild(ta);
+    return ok;
+  }
+}
+
+/* 复制一次：计数+1 → 排到最后；满30次 → 删除 */
+async function copyCode(id, btn) {
+  const item = codes.find(c => c.id === id);
+  if (!item) { toast('该邀请码已下架'); refreshList(true); return; }
+  const ok = await doCopy(item.code);
+  if (!ok) { toast('复制失败，请手动长按复制'); return; }
+  const copies = (item.copies || 0) + 1;
+  btn.disabled = true;
+  try {
+    if (copies >= MAX_COPIES) {
+      await store.remove(id);
+      toast(`已复制 ${item.code}，该码被复制已满${MAX_COPIES}次，自动下架`);
+    } else {
+      const now = new Date().toISOString();
+      await store.update(id, SHARED ? { copies, updated_at: now } : { copies, updatedAt: now });
+      toast(`已复制 ${item.code}，自动排到最后`);
+    }
+  } catch { toast('计数更新失败，但复制已成功'); }
+  await refreshList(true);
+}
+
+async function submitCode() {
+  const input = document.getElementById('codeInput');
+  const btn = document.getElementById('submitBtn');
+  let code = input.value.trim().toUpperCase();
+  if (!/^[A-Z0-9]{4,16}$/.test(code)) { toast('邀请码格式不对，应为4–16位字母/数字'); return; }
+  if (codes.some(c => c.code === code)) { toast('这个邀请码已经在列表里了'); return; }
+  btn.disabled = true;
+  try {
+    const now = new Date().toISOString();
+    await store.add(SHARED ? { code } : { id: uid(), code, copies: 0, createdAt: now, updatedAt: now });
+    input.value = '';
+    toast('提交成功，感谢分享 🎉');
+    await refreshList(true);
+  } catch { toast('提交失败，请稍后重试'); }
+  btn.disabled = false;
+}
+
+let currentRandomId = null;
+async function drawRandom() {
+  if (!codes.length) { toast('列表还是空的，先分享一个吧'); return; }
+  const pick = codes[Math.floor(Math.random() * codes.length)];
+  currentRandomId = pick.id;
+  document.getElementById('randomCode').textContent = pick.code;
+  document.getElementById('randomMeta').textContent = `已被复制 ${pick.copies || 0} 次`;
+  document.getElementById('randomResult').style.display = 'block';
+  document.getElementById('randomCopyBtn').onclick = async (e) => {
+    await copyCode(currentRandomId, e.target);
+    // 复制后自动再抽一个，保持可用
+    const box = document.getElementById('randomResult');
+    if (codes.length) { await drawRandom(); }
+    else { box.style.display = 'none'; }
+  };
+  document.getElementById('randomResult').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+document.getElementById('codeInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') submitCode();
+});
+
+refreshList(false);
+setInterval(() => refreshList(true), REFRESH_MS);
+</script>
+</body>
+</html>
