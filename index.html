@@ -80,7 +80,7 @@
   <div id="list"><div class="loading">加载中…</div></div>
 
 </div>
-<div id="visitFoot" style="text-align:center;color:#888;font-size:13px;margin:16px 0 28px">👀 本站累计被访问 <b id="visitCount">…</b> 次</div>
+<div id="visitFoot" style="display:none;text-align:center;color:#888;font-size:13px;margin:16px 0 28px">👀 本站累计被访问 <b id="visitCount">…</b> 次</div>
 <div id="toast"></div>
 
 <script>
@@ -169,7 +169,8 @@ const store = {
   }
 };
 
-/* ---------- 访问统计：每次打开记一次，页脚显示累计次数 ---------- */
+/* ---------- 访问统计：每次打开都记一次；计数只向带密钥的访问者展示 ---------- */
+const VISIT_KEY = '7f3k9q';
 async function trackVisit() {
   if (!SHARED) return;
   const H = { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` };
@@ -180,6 +181,8 @@ async function trackVisit() {
       body: '{}'
     });
   } catch {}
+  if (new URLSearchParams(location.search).get('k') !== VISIT_KEY) return;
+  document.getElementById('visitFoot').style.display = 'block';
   try {
     const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/visits?select=id`, {
       method: 'HEAD', headers: { ...H, Prefer: 'count=exact' }
