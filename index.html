@@ -80,6 +80,7 @@
   <div id="list"><div class="loading">加载中…</div></div>
 
 </div>
+<div id="visitFoot" style="text-align:center;color:#888;font-size:13px;margin:16px 0 28px">👀 本站累计被访问 <b id="visitCount">…</b> 次</div>
 <div id="toast"></div>
 
 <script>
@@ -96,7 +97,7 @@ const REFRESH_MS = 20000;       // 列表自动刷新间隔
 /* =========================================== */
 
 const SHARED = !!(CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY);
-if (!SHARED) document.getElementById('demoBanner').style.display = 'block';
+if (!SHARED) { document.getElementById('demoBanner').style.display = 'block'; document.getElementById('visitFoot').style.display = 'none'; }
 
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -167,6 +168,26 @@ const store = {
     localStorage.setItem('muse_invite_codes_v1', JSON.stringify(arr));
   }
 };
+
+/* ---------- 访问统计：每次打开记一次，页脚显示累计次数 ---------- */
+async function trackVisit() {
+  if (!SHARED) return;
+  const H = { apikey: CONFIG.SUPABASE_ANON_KEY, Authorization: `Bearer ${CONFIG.SUPABASE_ANON_KEY}` };
+  try {
+    await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/visits`, {
+      method: 'POST',
+      headers: { ...H, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+  } catch {}
+  try {
+    const r = await fetch(`${CONFIG.SUPABASE_URL}/rest/v1/visits?select=id`, {
+      method: 'HEAD', headers: { ...H, Prefer: 'count=exact' }
+    });
+    const total = parseInt((r.headers.get('content-range') || '/0').split('/')[1], 10);
+    document.getElementById('visitCount').textContent = isNaN(total) ? '—' : total;
+  } catch {}
+}
 
 /* ---------- 业务逻辑 ---------- */
 let codes = [];
@@ -289,6 +310,7 @@ document.getElementById('codeInput').addEventListener('keydown', e => {
 });
 
 refreshList(false);
+trackVisit();
 setInterval(() => refreshList(true), REFRESH_MS);
 </script>
 </body>
